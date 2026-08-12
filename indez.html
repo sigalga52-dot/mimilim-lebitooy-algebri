@@ -1,0 +1,560 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מעבר ממילים לביטויים אלגבריים</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f0fdf4; /* Light green background */
+        }
+        .ltr-text {
+            direction: ltr;
+            display: inline-block;
+        }
+        /* Style for better rendering of math */
+        .math-expr {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 1.1em;
+            font-weight: bold;
+            direction: ltr;
+            unicode-bidi: embed;
+            white-space: nowrap; /* Keep expressions on one line */
+            /* letter-spacing removed for better spacing */
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animation-fade-in {
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        const POSITIVE_FEEDBACK_M = [
+            "אתה תותח, ",
+            "כל הכבוד, ",
+            "מצוין, ",
+            "אלוף, ",
+            "תשובה מושלמת, "
+        ];
+
+        const POSITIVE_FEEDBACK_F = [
+            "את תותחית, ",
+            "כל הכבוד, ",
+            "מצוינת, ",
+            "אלופה, ",
+            "תשובה מושלמת, "
+        ];
+
+        const ENCOURAGEMENT_M = "לא נורא, נסה שוב!";
+        const ENCOURAGEMENT_F = "לא נורא, נסי שוב!";
+
+        // Question Bank
+        const LEVELS = [
+            {
+                level: 1,
+                story: "מחיר כרטיס ילד לסרט הוא שליש ממחיר כרטיס מבוגר. מחיר כרטיס מבוגר הוא <span class='math-expr'>x</span> שקלים.",
+                questions: [
+                    {
+                        id: '1a',
+                        text: "איזה מהביטויים הבאים מתאר את מחיר כרטיס הילד?",
+                        options: ["<span class='math-expr'>x - 3</span>", "<span class='math-expr'>x + 3</span>", "<span class='math-expr'>x : 3</span>"],
+                        correctOptionIndex: 2,
+                        explanation: "שליש משמעותו לחלק ב-3. לכן אם מחיר המבוגר הוא x, כרטיס ילד הוא x חלקי 3.",
+                        similarQuestion: {
+                            story: "מחיר עט הוא שליש ממחיר עיפרון. מחיר העיפרון הוא <span class='math-expr'>y</span> שקלים.",
+                            text: "איזה מהביטויים הבאים מתאר את מחיר העט?",
+                            options: ["<span class='math-expr'>y - 3</span>", "<span class='math-expr'>y : 3</span>", "<span class='math-expr'>3 · y</span>"],
+                            correctOptionIndex: 1,
+                            explanation: "שליש אומר לחלק ב-3. לכן מחיר העט הוא y חלקי 3."
+                        }
+                    },
+                    {
+                        id: '1b',
+                        text: "איזה מהביטויים הבאים מתאר את המחיר של 5 כרטיסי ילד?",
+                        options: ["<span class='math-expr'>3 · x - 5</span>", "<span class='math-expr'>5 · (x - 3)</span>", "<span class='math-expr'>5 · (x : 3)</span>", "<span class='math-expr'>3 · (x + 5)</span>"],
+                        correctOptionIndex: 2,
+                        explanation: "מצאנו בסעיף הקודם שמחיר כרטיס ילד הוא (x:3). עבור 5 כרטיסים, נכפיל את המחיר ב-5.",
+                        similarQuestion: {
+                            story: "מחיר עט הוא שליש ממחיר עיפרון. מחיר העיפרון הוא <span class='math-expr'>y</span> שקלים.",
+                            text: "איזה מהביטויים הבאים מתאר את המחיר של 4 עטים?",
+                            options: ["<span class='math-expr'>4 · (y : 3)</span>", "<span class='math-expr'>y : 3 + 4</span>", "<span class='math-expr'>4 · y - 3</span>", "<span class='math-expr'>y : 12</span>"],
+                            correctOptionIndex: 0,
+                            explanation: "אם מחיר עט אחד הוא (y:3), נכפיל נתון זה ב-4 כדי למצוא מחיר של 4 עטים."
+                        }
+                    },
+                    {
+                        id: '1c',
+                        text: "סמנו את הביטוי למחיר שיש לשלם בקניית כרטיס מבוגר אחד ו-4 כרטיסי ילד.",
+                        options: ["<span class='math-expr'>x + 4 · (x : 3)</span>", "<span class='math-expr'>x + 4</span>", "<span class='math-expr'>4 · x + (x : 3)</span>"],
+                        correctOptionIndex: 0,
+                        explanation: "מחיר מבוגר הוא x. מחיר 4 כרטיסי ילד הוא 4 כפול (x:3). נחבר אותם לקבלת המחיר הכולל.",
+                        similarQuestion: {
+                            story: "מחיר עט הוא שליש ממחיר עיפרון. מחיר העיפרון הוא <span class='math-expr'>y</span> שקלים.",
+                            text: "איזה ביטוי מתאר את המחיר הכולל של עיפרון אחד ו-2 עטים?",
+                            options: ["<span class='math-expr'>2 · y + (y : 3)</span>", "<span class='math-expr'>y + 2</span>", "<span class='math-expr'>y + 2 · (y : 3)</span>"],
+                            correctOptionIndex: 2,
+                            explanation: "מחברים את מחיר העיפרון (y) יחד עם המחיר של 2 עטים שחישבנו."
+                        }
+                    },
+                    {
+                        id: '1d',
+                        text: "סמנו את הביטוי למחיר שיש לשלם בקניית 2 כרטיסי מבוגר ו-3 כרטיסי ילד.",
+                        options: ["<span class='math-expr'>2 · x + 3 · (x : 3)</span>", "<span class='math-expr'>2 + x + 3 + (x : 3)</span>", "<span class='math-expr'>2 · (x : 3) + 3 · x</span>"],
+                        correctOptionIndex: 0,
+                        explanation: "2 כרטיסי מבוגר יעלו פעמיים x. 3 כרטיסי ילד יעלו 3 פעמים (x:3). נחבר ביניהם.",
+                        similarQuestion: {
+                            story: "מחיר עט הוא שליש ממחיר עיפרון. מחיר העיפרון הוא <span class='math-expr'>y</span> שקלים.",
+                            text: "איזה ביטוי מתאר מחיר של 3 עפרונות ו-5 עטים?",
+                            options: ["<span class='math-expr'>3 · y + 5 · (y : 3)</span>", "<span class='math-expr'>5 · y + 3 · (y : 3)</span>", "<span class='math-expr'>3 + y + 5 + (y : 3)</span>"],
+                            correctOptionIndex: 0,
+                            explanation: "3 עפרונות זה 3 כפול y. 5 עטים זה 5 כפול (y:3). סכומם הוא הביטוי המבוקש."
+                        }
+                    }
+                ]
+            },
+            {
+                level: 2,
+                story: "באוסף הבולים של דנה יש 5 בולים יותר מאשר באוסף של רועי. מספר הבולים של רועי הוא <span class='math-expr'>n</span>.",
+                questions: [
+                    {
+                        id: '2a',
+                        text: "איזה ביטוי מתאר את מספר הבולים של דנה?",
+                        options: ["<span class='math-expr'>n - 5</span>", "<span class='math-expr'>n + 5</span>", "<span class='math-expr'>5 · n</span>"],
+                        correctOptionIndex: 1,
+                        explanation: "'יותר' מרמז על פעולת חיבור. לכן n ועוד 5.",
+                        similarQuestion: {
+                            story: "לעידו יש 4 שקלים פחות מלנועה. לנועה יש <span class='math-expr'>m</span> שקלים.",
+                            text: "איזה ביטוי מתאר את מספר השקלים של עידו?",
+                            options: ["<span class='math-expr'>m - 4</span>", "<span class='math-expr'>m + 4</span>", "<span class='math-expr'>m : 4</span>"],
+                            correctOptionIndex: 0,
+                            explanation: "'פחות' מרמז על חיסור. לכן m פחות 4."
+                        }
+                    },
+                    {
+                        id: '2b',
+                        text: "איזה ביטוי מתאר את מספר הבולים הכולל של שניהם יחד?",
+                        options: ["<span class='math-expr'>n + (n + 5)</span>", "<span class='math-expr'>n + 5</span>", "<span class='math-expr'>n · (n + 5)</span>"],
+                        correctOptionIndex: 0,
+                        explanation: "מחברים את מספר הבולים של רועי (n) עם מספר הבולים של דנה (n+5).",
+                        similarQuestion: {
+                            story: "לנועה יש <span class='math-expr'>m</span> שקלים ולעידו יש <span class='math-expr'>m - 4</span> שקלים.",
+                            text: "איזה ביטוי מתאר את סך כל השקלים של שניהם יחד?",
+                            options: ["<span class='math-expr'>m + (m - 4)</span>", "<span class='math-expr'>m - 4</span>", "<span class='math-expr'>m · (m - 4)</span>"],
+                            correctOptionIndex: 0,
+                            explanation: "מחברים את השקלים של נועה (m) עם אלה של עידו (m-4)."
+                        }
+                    },
+                    {
+                        id: '2c',
+                        text: "רועי נותן מחצית מהבולים שלו במתנה, ודנה שומרת את כל הבולים שלה. איזה ביטוי מתאר את מספר הבולים שנשארו להם יחד?",
+                        options: ["<span class='math-expr'>n + (n + 5) : 2</span>", "<span class='math-expr'>n : 2 + (n + 5)</span>", "<span class='math-expr'>(n + n + 5) : 2</span>"],
+                        correctOptionIndex: 1,
+                        explanation: "לרועי נשארה מחצית (n חלקי 2). לדנה נשאר הכל (n+5). נחבר אותם.",
+                        similarQuestion: {
+                            story: "נועה הוציאה את כל כספה (<span class='math-expr'>m</span>) ועידו הוציא שליש מכספו (<span class='math-expr'>m - 4</span>).",
+                            text: "איזה ביטוי מתאר את סך ההוצאה?",
+                            options: ["<span class='math-expr'>m + (m - 4) : 3</span>", "<span class='math-expr'>m : 3 + (m - 4)</span>", "<span class='math-expr'>(m + m - 4) : 3</span>"],
+                            correctOptionIndex: 0,
+                            explanation: "נועה הוציאה m. עידו הוציא (m-4) חלקי 3. סכומם הוא ההוצאה הכוללת."
+                        }
+                    },
+                    {
+                        id: '2d',
+                        text: "אם דנה מחלקת את הבולים שלה שווה בשווה בין <span class='math-expr'>k</span> אלבומים, כמה בולים יהיו בכל אלבום?",
+                        options: ["<span class='math-expr'>(n + 5) - k</span>", "<span class='math-expr'>(n + 5) · k</span>", "<span class='math-expr'>(n + 5) : k</span>"],
+                        correctOptionIndex: 2,
+                        explanation: "יש לחלק את מספר הבולים של דנה (n+5) במספר האלבומים (k).",
+                        similarQuestion: {
+                            story: "רוצים לחלק את הכסף של נועה (<span class='math-expr'>m</span>) שווה בשווה בין <span class='math-expr'>p</span> אחים.",
+                            text: "איזה ביטוי מתאר כמה יקבל כל אח?",
+                            options: ["<span class='math-expr'>m : p</span>", "<span class='math-expr'>m - p</span>", "<span class='math-expr'>m · p</span>"],
+                            correctOptionIndex: 0,
+                            explanation: "חלוקה שווה פירושה פעולת חילוק. m לחלק ל-p."
+                        }
+                    }
+                ]
+            },
+            {
+                level: 3,
+                story: "אורכו של סרט כחול הוא פי 2 מאורכו של סרט אדום. אורך הסרט האדום הוא <span class='math-expr'>a</span> ס\"מ.",
+                questions: [
+                    {
+                        id: '3a',
+                        text: "איזה ביטוי מתאר את אורך הסרט הכחול?",
+                        options: ["<span class='math-expr'>a + 2</span>", "<span class='math-expr'>2 · a</span>", "<span class='math-expr'>a : 2</span>"],
+                        correctOptionIndex: 1,
+                        explanation: "'פי 2' אומר לכפול ב-2. לכן 2 כפול a.",
+                        similarQuestion: {
+                            story: "משקלו של חתול הוא פי 3 ממשקלו של ארנב. משקל הארנב הוא <span class='math-expr'>b</span> ק\"ג.",
+                            text: "איזה ביטוי מתאר את משקל החתול?",
+                            options: ["<span class='math-expr'>b + 3</span>", "<span class='math-expr'>3 · b</span>", "<span class='math-expr'>b : 3</span>"],
+                            correctOptionIndex: 1,
+                            explanation: "'פי 3' אומר לכפול ב-3. לכן 3 כפול b."
+                        }
+                    },
+                    {
+                        id: '3b',
+                        text: "איזה ביטוי מתאר אורך כולל של 3 סרטים אדומים ו-2 סרטים כחולים?",
+                        options: ["<span class='math-expr'>3 · a + 2 · (2 · a)</span>", "<span class='math-expr'>3 · (2 · a) + 2 · a</span>", "<span class='math-expr'>3 + a + 2 + (2 · a)</span>"],
+                        correctOptionIndex: 0,
+                        explanation: "3 סרטים אדומים זה 3 כפול a. 2 סרטים כחולים זה 2 כפול (2*a). נחבר ביניהם.",
+                        similarQuestion: {
+                            story: "משקל ארנב <span class='math-expr'>b</span> ק\"ג ומשקל חתול <span class='math-expr'>3 · b</span> ק\"ג.",
+                            text: "איזה ביטוי מתאר את המשקל הכולל של 2 ארנבים ו-4 חתולים?",
+                            options: ["<span class='math-expr'>2 · b + 4 · (3 · b)</span>", "<span class='math-expr'>b + 3 · b</span>", "<span class='math-expr'>4 · b + 2 · (3 · b)</span>"],
+                            correctOptionIndex: 0,
+                            explanation: "2 ארנבים שוקלים 2 פעמים b, ו-4 חתולים שוקלים 4 פעמים המשקל של חתול. מחברים אותם."
+                        }
+                    },
+                    {
+                        id: '3c',
+                        text: "אם גוזרים מהסרט הכחול 15 ס\"מ, איזה ביטוי מתאר את האורך שנותר?",
+                        options: ["<span class='math-expr'>15 - 2 · a</span>", "<span class='math-expr'>2 · a - 15</span>", "<span class='math-expr'>2 · a + 15</span>"],
+                        correctOptionIndex: 1,
+                        explanation: "האורך המקורי של הכחול הוא 2*a. אם גוזרים (מורידים) ממנו 15, נחסר 15 מהאורך.",
+                        similarQuestion: {
+                            story: "משקל החתול הוא <span class='math-expr'>3 · b</span> ק\"ג. החתול השיל ממשקלו 2 ק\"ג בדיאטה.",
+                            text: "איזה ביטוי מתאר את משקלו החדש?",
+                            options: ["<span class='math-expr'>3 · b - 2</span>", "<span class='math-expr'>2 - 3 · b</span>", "<span class='math-expr'>3 · b + 2</span>"],
+                            correctOptionIndex: 0,
+                            explanation: "מחסרים 2 מהמשקל המקורי."
+                        }
+                    },
+                    {
+                        id: '3d',
+                        text: "מחברים יחד סרט כחול וסרט אדום לחוט אחד ארוך. רוצים לחתוך את החוט החדש ל-4 מקטעים שווים. מה יהיה אורך כל מקטע?",
+                        options: ["<span class='math-expr'>(a + 2 · a) - 4</span>", "<span class='math-expr'>4 · (a + 2 · a)</span>", "<span class='math-expr'>(a + 2 · a) : 4</span>"],
+                        correctOptionIndex: 2,
+                        explanation: "האורך הכולל הוא החיבור שלהם. כדי לחלק ל-4 מקטעים שווים, נשתמש בפעולת חילוק ב-4.",
+                        similarQuestion: {
+                            story: "משקלם הכולל של ארנב וחתול הוא <span class='math-expr'>b + 3 · b</span> ק\"ג.",
+                            text: "אם נחלק את המשקל הכולל ל-2 ארגזים שווים, מה יהיה המשקל בכל ארגז?",
+                            options: ["<span class='math-expr'>(b + 3 · b) : 2</span>", "<span class='math-expr'>(b + 3 · b) - 2</span>", "<span class='math-expr'>2 · (b + 3 · b)</span>"],
+                            correctOptionIndex: 0,
+                            explanation: "נחלק את המשקל הכולל ב-2."
+                        }
+                    }
+                ]
+            }
+        ];
+
+        function App() {
+            // Setup Stage
+            const [studentName, setStudentName] = useState("");
+            const [gender, setGender] = useState("");
+            const [isSetupComplete, setIsSetupComplete] = useState(false);
+
+            // Game Stage
+            const [currentLevelIndex, setCurrentLevelIndex] = useState(0);
+            const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
+            const [isSimilarQuestionActive, setIsSimilarQuestionActive] = useState(false);
+            
+            // Feedback State
+            const [showFeedback, setShowFeedback] = useState(false);
+            const [isCorrect, setIsCorrect] = useState(false);
+            const [feedbackText, setFeedbackText] = useState("");
+            const [explanationText, setExplanationText] = useState("");
+            const [correctAnswerText, setCorrectAnswerText] = useState("");
+
+            // End Stage
+            const [isGameComplete, setIsGameComplete] = useState(false);
+
+
+            const getRandomFeedback = (isPositive) => {
+                if (isPositive) {
+                    const pool = gender === 'M' ? POSITIVE_FEEDBACK_M : POSITIVE_FEEDBACK_F;
+                    const randomPhrase = pool[Math.floor(Math.random() * pool.length)];
+                    return `${randomPhrase}${studentName}!`;
+                } else {
+                    return gender === 'M' ? ENCOURAGEMENT_M : ENCOURAGEMENT_F;
+                }
+            };
+
+            const handleStart = () => {
+                if (studentName.trim() !== "" && gender !== "") {
+                    setIsSetupComplete(true);
+                } else {
+                    alert("נא להזין שם ולבחור אם את/ה תלמיד או תלמידה.");
+                }
+            };
+
+            const handleAnswer = (selectedIndex) => {
+                const currentLevel = LEVELS[currentLevelIndex];
+                const currentQuestionData = currentLevel.questions[currentQuestionIndex];
+                
+                const activeQuestion = isSimilarQuestionActive ? currentQuestionData.similarQuestion : currentQuestionData;
+                
+                const correct = selectedIndex === activeQuestion.correctOptionIndex;
+                setIsCorrect(correct);
+                
+                if (correct) {
+                    setFeedbackText(getRandomFeedback(true));
+                    setExplanationText("");
+                    setCorrectAnswerText("");
+                } else {
+                    setFeedbackText(getRandomFeedback(false));
+                    setExplanationText(activeQuestion.explanation);
+                    setCorrectAnswerText(`התשובה הנכונה היא:`);
+                }
+                
+                setShowFeedback(true);
+            };
+
+            const handleNext = () => {
+                setShowFeedback(false);
+                
+                if (isCorrect) {
+                    if (isSimilarQuestionActive) {
+                        setIsSimilarQuestionActive(false);
+                        advanceQuestion();
+                    } else {
+                        advanceQuestion();
+                    }
+                } else {
+                    if (!isSimilarQuestionActive) {
+                        setIsSimilarQuestionActive(true);
+                    }
+                }
+            };
+
+            const advanceQuestion = () => {
+                const currentLevel = LEVELS[currentLevelIndex];
+                if (currentQuestionIndex + 1 < currentLevel.questions.length) {
+                    setCurrentQuestionIndex(currentQuestionIndex + 1);
+                } else {
+                    // Level complete
+                    if (currentLevelIndex + 1 < LEVELS.length) {
+                        setCurrentLevelIndex(currentLevelIndex + 1);
+                        setCurrentQuestionIndex(0);
+                    } else {
+                        // Game complete
+                        setIsGameComplete(true);
+                    }
+                }
+            };
+
+
+            if (!isSetupComplete) {
+                return (
+                    <div className="min-h-screen flex items-center justify-center p-4">
+                        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full border-t-8 border-green-500">
+                            <h1 className="text-3xl font-bold text-center mb-6 text-green-800">ברוכים הבאים ללומדת אלגברה!</h1>
+                            <p className="text-gray-600 mb-6 text-center">כאן נלמד איך לעבור ממילים לביטויים אלגבריים בצורה קלה ופשוטה.</p>
+                            
+                            <div className="mb-4">
+                                <label className="block text-gray-700 text-sm font-bold mb-2">איך קוראים לך?</label>
+                                <input 
+                                    type="text" 
+                                    className="shadow appearance-none border rounded w-full py-2 px-3 text-gray-700 leading-tight focus:outline-none focus:shadow-outline focus:border-green-500"
+                                    value={studentName}
+                                    onChange={(e) => setStudentName(e.target.value)}
+                                    placeholder="הכנס/י שם פרטי"
+                                />
+                            </div>
+
+                            <div className="mb-6">
+                                <label className="block text-gray-700 text-sm font-bold mb-2">אני...</label>
+                                <div className="flex gap-4">
+                                    <label className="flex items-center">
+                                        <input 
+                                            type="radio" 
+                                            name="gender" 
+                                            value="M" 
+                                            className="mr-2"
+                                            onChange={() => setGender('M')}
+                                        />
+                                        <span className="mr-2">תלמיד 👦</span>
+                                    </label>
+                                    <label className="flex items-center">
+                                        <input 
+                                            type="radio" 
+                                            name="gender" 
+                                            value="F" 
+                                            className="mr-2"
+                                            onChange={() => setGender('F')}
+                                        />
+                                        <span className="mr-2">תלמידה 👧</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <button 
+                                onClick={handleStart}
+                                className="w-full bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-4 rounded-xl shadow-lg transition duration-200 transform hover:scale-105"
+                            >
+                                בואו נתחיל!
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            if (isGameComplete) {
+                return (
+                    <div className="min-h-screen flex flex-col items-center justify-center p-4">
+                         <div className="text-center bg-white p-10 rounded-3xl shadow-2xl border-4 border-yellow-400 max-w-lg">
+                            <div className="text-6xl mb-4">🏆</div>
+                            <h1 className="text-3xl font-bold text-green-700 mb-4">
+                                כל הכבוד, {studentName}!
+                            </h1>
+                            <p className="text-xl text-gray-700">
+                                {gender === 'M' ? 'סיימת' : 'סיימת'} את הלומדה בנושא ממילים לביטוי אלגברי בהצלחה רבה.
+                            </p>
+                            <button 
+                                onClick={() => window.location.reload()}
+                                className="mt-8 bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg transition"
+                            >
+                                התחל מחדש
+                            </button>
+                        </div>
+                    </div>
+                );
+            }
+
+            const currentLevel = LEVELS[currentLevelIndex];
+            const currentQuestionData = currentLevel.questions[currentQuestionIndex];
+            const activeQuestion = isSimilarQuestionActive ? currentQuestionData.similarQuestion : currentQuestionData;
+            
+            // The active story depends on whether we are in a similar question or the main question
+            const activeStory = isSimilarQuestionActive && currentQuestionData.similarQuestion.story 
+                                ? currentQuestionData.similarQuestion.story 
+                                : currentLevel.story;
+            
+            const progressPercentage = ((currentLevelIndex * 4 + currentQuestionIndex) / 12) * 100;
+
+            return (
+                <div className="min-h-screen flex flex-col p-4 md:p-8 max-w-5xl mx-auto">
+                    
+                    {/* Header & Progress */}
+                    <header className="mb-8 flex flex-col md:flex-row justify-between items-center bg-white p-4 rounded-xl shadow-sm">
+                        <div>
+                            <h2 className="text-xl font-bold text-gray-800">שלום, {studentName}!</h2>
+                            <p className="text-sm text-gray-500">שלב {currentLevel.level} מתוך 3 | שאלה {currentQuestionIndex + 1} מתוך 4</p>
+                        </div>
+                        <div className="w-full md:w-1/2 mt-4 md:mt-0">
+                            <div className="bg-gray-200 rounded-full h-3 w-full overflow-hidden">
+                                <div 
+                                    className="bg-green-500 h-full rounded-full transition-all duration-500"
+                                    style={{width: `${progressPercentage}%`}}
+                                ></div>
+                            </div>
+                        </div>
+                    </header>
+
+                    <main className="flex-grow flex flex-col lg:flex-row gap-6">
+                        
+                        {/* Question Section */}
+                        <div className="w-full lg:w-2/3 bg-white p-6 md:p-8 rounded-2xl shadow-lg border border-gray-100 relative">
+                            {isSimilarQuestionActive && (
+                                <div className="absolute top-0 right-0 bg-yellow-400 text-yellow-900 px-4 py-1 rounded-bl-xl rounded-tr-2xl font-bold text-sm">
+                                    שאלה נוספת (תרגול)
+                                </div>
+                            )}
+                            
+                            {/* Base Story / Given Data */}
+                            <div className="mb-6 bg-blue-50 p-6 rounded-xl border border-blue-200">
+                                <h3 className="text-sm font-bold text-blue-800 mb-2">נתוני הבסיס לשאלה זו:</h3>
+                                <p className="text-xl md:text-2xl font-medium text-gray-800 leading-relaxed" dangerouslySetInnerHTML={{__html: activeStory}}></p>
+                            </div>
+
+                            <div className="mb-6">
+                                <h4 className="text-sm font-bold text-gray-500 mb-2">שאלה {currentQuestionIndex + 1}:</h4>
+                                <p className="text-xl font-bold text-blue-900 mb-6" dangerouslySetInnerHTML={{__html: activeQuestion.text}}></p>
+                                
+                                {}
+                                {/* STRICTLY VERTICAL LAYOUT: flex-col ensures each button is on its own row. w-full makes them wide. */}
+                                <div className="flex flex-col space-y-4 w-full">
+                                    {activeQuestion.options.map((optionHtml, index) => {
+                                        
+                                        // Base button styles: wide (w-full), large padding, flex layout to separate number and math.
+                                        let btnClass = "w-full p-6 rounded-2xl border-2 transition-all duration-200 text-lg flex items-center justify-between group bg-gray-50 hover:bg-gray-100 hover:border-blue-300 border-gray-200";
+                                        
+                                        if (showFeedback) {
+                                            if (index === activeQuestion.correctOptionIndex) {
+                                                btnClass = "w-full p-6 rounded-2xl border-2 transition-all duration-200 text-lg flex items-center justify-between group bg-green-100 border-green-500 text-green-900 cursor-default shadow-inner";
+                                            } else {
+                                                btnClass = "w-full p-6 rounded-2xl border-2 transition-all duration-200 text-lg flex items-center justify-between group bg-gray-100 border-gray-300 text-gray-400 cursor-not-allowed opacity-60";
+                                            }
+                                        }
+
+                                        return (
+                                            <button 
+                                                key={index}
+                                                onClick={() => !showFeedback && handleAnswer(index)}
+                                                disabled={showFeedback}
+                                                className={btnClass}
+                                            >
+                                                {/* Right Side: The number circle */}
+                                                <div className="w-10 h-10 flex-shrink-0 rounded-full bg-white border border-gray-300 flex items-center justify-center text-lg font-bold text-gray-500 shadow-sm group-hover:bg-blue-50 ml-6">
+                                                    {index + 1}
+                                                </div>
+                                                
+                                                {/* Center/Left Side: The math expression */}
+                                                <div className="flex-grow text-center overflow-x-auto" style={{ direction: 'ltr' }}>
+                                                    <span className="inline-block text-2xl" dangerouslySetInnerHTML={{__html: optionHtml}}></span>
+                                                </div>
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {}
+                        {/* Feedback Section (Sidebar on desktop, bottom on mobile) */}
+                        <div className="w-full lg:w-1/3 min-h-[300px]">
+                            {showFeedback && (
+                                <div className={`h-full p-6 rounded-2xl shadow-lg border-2 flex flex-col justify-center items-center text-center animation-fade-in ${isCorrect ? 'bg-green-50 border-green-400' : 'bg-red-50 border-red-300'}`}>
+                                    
+                                    <div className="text-6xl mb-4 animate-bounce">
+                                        {isCorrect ? '😄' : '😕'}
+                                    </div>
+                                    
+                                    <h3 className={`text-2xl font-bold mb-4 ${isCorrect ? 'text-green-800' : 'text-red-800'}`}>
+                                        {feedbackText}
+                                    </h3>
+
+                                    {!isCorrect && (
+                                        <div className="text-right w-full bg-white p-4 rounded-lg shadow-inner mb-6 border border-red-100">
+                                            <p className="font-bold text-gray-700 mb-2 underline decoration-red-300">הסבר:</p>
+                                            <p className="text-gray-800 text-sm leading-relaxed mb-4">{explanationText}</p>
+                                            
+                                            <div className="bg-green-100 p-2 rounded border border-green-200 flex flex-col items-start w-full">
+                                                <span className="font-bold text-green-900 text-sm mb-1">{correctAnswerText}</span>
+                                                <span className="ltr-text text-green-800 text-lg font-bold bg-white px-3 py-1 rounded w-full text-center" dangerouslySetInnerHTML={{__html: activeQuestion.options[activeQuestion.correctOptionIndex]}}></span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <button 
+                                        onClick={handleNext}
+                                        className={`mt-auto w-full font-bold py-3 px-6 rounded-xl shadow-md transition ${isCorrect ? 'bg-green-500 hover:bg-green-600 text-white' : 'bg-blue-500 hover:bg-blue-600 text-white'}`}
+                                    >
+                                        {isCorrect ? 'המשך לשאלה הבאה' : 'הבנתי, נסה שוב'}
+                                    </button>
+                                </div>
+                            )}
+                        </div>
+                    </main>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
